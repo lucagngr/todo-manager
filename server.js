@@ -1,9 +1,13 @@
 const express = require('express');
 const path = require('path');
+const mongoose = require('mongoose');
+const task = require('./model/task');
+require('dotenv').config();
+
 const app = express();
 const port = 3000;
+app.use(express.json());
 
-//Object containing the messages for each language
 const messages = {
   fr: {
     morning: "Bonjour",
@@ -21,7 +25,7 @@ const messages = {
   }
 };
 
-//Function to address a message based on the time of day
+// Function to address a message based on the time of day
 function getMessageBasedOnTime(language) {
   const currentHour = new Date().getHours();
   const langMessages = messages[language] || messages.fr;
@@ -39,38 +43,62 @@ function getMessageBasedOnTime(language) {
   }
 }
 
-//schema for express and port
-app.use(express.static(path.join(__dirname, '../public'))); 
+// Serve static files from the 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/json', (req, res) => {
+  const language = req.query.lang || 'fr';
+  const message = getMessageBasedOnTime(language);
+  res.json({ message: message });
+});
 
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connecté"))
+  .catch(err => console.error("Erreur de connexion à MongoDB:", err));
+
+// Routes for tasks
+app.post('/tasks', async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const newTask = new task({ title, description });
+    await newTask.save(); 
+    res.status(201).json(newTask); 
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/tasks', async (req, res) => {
+  try {
+    const tasks = await task.find();
+    res.json(tasks);  
+  } catch (err) {
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// HTML and CSS rendering
 app.get('/', (req, res) => {
   const language = req.query.lang || 'fr';
   const message = getMessageBasedOnTime(language);
 
-  res.json({ message: message }); 
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="${language}">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Message du jour</title>
+        <link rel="stylesheet" href="/styles/style.css">
+      </head>
+      <body>
+        <h1>${message}</h1>
+      </body>
+    </html>
+  `);
 });
 
 app.listen(port, () => {
   console.log(`Serveur lancé sur http://localhost:${port}`);
 });
-
-//HTML CSS insertion
-app.get('/', (req, res) => {
-    const language = req.query.lang || 'fr';
-    const message = getMessageBasedOnTime(language);
-  
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="${language}">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Message du jour</title>
-          <link rel="stylesheet" href="/styles/style.css">
-        </head>
-        <body>
-          <h1>${message}</h1>
-        </body>
-      </html>
-    `);
-  });
