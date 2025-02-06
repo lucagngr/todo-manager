@@ -78,6 +78,45 @@ app.get('/tasks', async (req, res) => {
   }
 });
 
+// read task
+app.get('/tasks/:id', async (req, res) => {
+  try {
+    const task = await task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// update task
+app.put('/tasks/:id', async (req, res) => {
+  try {
+    const task = await task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    res.json(task);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// delete task 
+app.delete('/tasks/:id', async (req, res) => {
+  try {
+    const task = await task.findByIdAndDelete(req.params.id);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    res.json({ message: 'Task deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // HTML and CSS rendering
 app.get('/', (req, res) => {
   const language = req.query.lang || 'fr';
